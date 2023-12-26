@@ -479,6 +479,10 @@ namespace Mono.Cecil {
 
 		readonly protected ModuleDefinition module;
 
+		public Func<TypeReference, TypeReference, TypeReference> ProcessTypeRef = (r, o) => r;
+		public Func<MethodReference, MethodReference, MethodReference> ProcessMethodRef = (m, o) => m;
+		public Func<FieldReference, FieldReference, FieldReference> ProcessFieldRef = (f, o) => f;
+
 		public DefaultMetadataImporter (ModuleDefinition module)
 		{
 			Mixin.CheckModule (module);
@@ -506,7 +510,7 @@ namespace Mono.Cecil {
 			if (type.HasGenericParameters)
 				ImportGenericParameters (reference, type);
 
-			return reference;
+			return ProcessTypeRef (reference, type);
 		}
 
 		protected virtual IMetadataScope ImportScope (TypeReference type)
@@ -662,11 +666,11 @@ namespace Mono.Cecil {
 
 			context.Push (declaring_type);
 			try {
-				return new FieldReference {
+				return ProcessFieldRef (new FieldReference {
 					Name = field.Name,
 					DeclaringType = declaring_type,
 					FieldType = ImportType (field.FieldType, context),
-				};
+				}, field);
 			} finally {
 				context.Pop ();
 			}
@@ -695,7 +699,7 @@ namespace Mono.Cecil {
 				reference.ReturnType = ImportType (method.ReturnType, context);
 
 				if (!method.HasParameters)
-					return reference;
+					return ProcessMethodRef (reference, method);
 
 				var parameters = method.Parameters;
 				var reference_parameters = reference.parameters = new ParameterDefinitionCollection (reference, parameters.Count);
@@ -703,7 +707,7 @@ namespace Mono.Cecil {
 					reference_parameters.Add (
 						new ParameterDefinition (ImportType (parameters [i].ParameterType, context)));
 
-				return reference;
+				return ProcessMethodRef (reference, method);
 			} finally {
 				context.Pop();
 			}
